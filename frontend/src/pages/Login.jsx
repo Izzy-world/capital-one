@@ -44,6 +44,11 @@ export default function Login() {
             <input type="password" {...register('password')} className="mt-1 w-full border rounded-lg p-2 focus:ring-[#004977] focus:border-[#004977]" />
             {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
           </div>
+          <div className="text-right">
+            <Link to="/forgot-password" className="text-sm text-[#004977] hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <button type="submit" disabled={isSubmitting} className="w-full bg-[#d22630] text-white py-2 rounded-lg hover:bg-red-700 transition">
             {isSubmitting ? 'Signing in...' : 'Sign In'}

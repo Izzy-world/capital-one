@@ -10,6 +10,7 @@ import {
   ArrowUpIcon, ArrowDownIcon, ArrowPathIcon,
   UserCircleIcon, HomeIcon, BriefcaseIcon, PhoneIcon, CalendarIcon
 } from '@heroicons/react/24/outline';
+import CreditScoreCard from '../components/CreditScoreCard';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -120,7 +121,9 @@ export default function Dashboard() {
             <h1 className="text-xl font-bold text-white">Capital One</h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-white text-sm">Welcome, {userDetails.fullName || userDetails.name}</span>
+            <span className="text-white text-sm font-medium">
+              Welcome, {userDetails.fullName || userDetails.name}
+            </span>
             <button onClick={handleLogout} className="bg-white/20 hover:bg-white/30 text-white px-4 py-1 rounded-full text-sm transition">
               Sign Out
             </button>
@@ -211,7 +214,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Right column: Actions + Profile */}
+          {/* Right column: Actions + Profile + Credit Score */}
           <div className="space-y-6">
             {/* Deposit Card */}
             <div className="bg-white rounded-xl shadow-md p-6">
@@ -279,6 +282,9 @@ export default function Dashboard() {
               <p className="text-xs text-gray-400 text-center mt-4">Based on your transaction history</p>
             </div>
 
+            {/* Credit Score Card */}
+            <CreditScoreCard />
+
             {/* Profile Card */}
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="flex items-center gap-3 border-b pb-3 mb-3">
@@ -286,8 +292,8 @@ export default function Dashboard() {
                 <h3 className="font-semibold text-gray-800">Profile information</h3>
               </div>
               <div className="space-y-2 text-sm">
-                <p><span className="font-medium">Full name:</span> {userDetails.fullName || userDetails.name}</p>
-                <p><span className="font-medium">Email:</span> {userDetails.email}</p>
+                <p><span className="font-medium">Full name:</span> {userDetails.fullName || userDetails.name || 'Not provided'}</p>
+                <p><span className="font-medium">Email:</span> {userDetails.email || 'Not provided'}</p>
                 {userDetails.phoneNumber && (
                   <p className="flex items-center gap-1"><PhoneIcon className="h-4 w-4 text-gray-500" /> {userDetails.phoneNumber}</p>
                 )}

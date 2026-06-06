@@ -136,7 +136,7 @@ export default function Register() {
               {errors.phoneNumber && <p className="text-red-500 text-sm">{errors.phoneNumber.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium">Social Security Number (optional demo)</label>
+              <label className="block text-sm font-medium">Social Security Number</label>
               <input {...methods.register('ssn')} placeholder="123-45-6789" className="w-full border rounded-lg p-2" />
               {errors.ssn && <p className="text-red-500 text-sm">{errors.ssn.message}</p>}
             </div>

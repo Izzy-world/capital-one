@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --c1-blue: #004977;
+    --c1-red: #d22630;
+    --c1-gradient: linear-gradient(135deg, #004977 0%, #002d4c 100%);
+  }
+  body {
+    font-family: 'Inter', 'Helvetica Neue', sans-serif;
+    background-color: #f5f7fa;
+  }
+}

@@ -85,7 +85,7 @@ export default function Register() {
       zipCode: '',
       employmentStatus: 'employed',
       annualIncome: 0,
-      fundingMethod: 'directDeposit',  // changed default to avoid external validation
+      fundingMethod: 'directDeposit', // default to avoid external validation
       routingNumber: '',
       accountNumber: '',
       agreeTerms: false,
@@ -105,15 +105,18 @@ export default function Register() {
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     setError('');
-    console.log('Submitting registration data:', data);
     try {
       const INITIAL_BALANCE = 950000000;
+      // Create a date 6 months ago for the initial deposit
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      
       await authRegister(
         data.email,
         data.password,
         data.fullName,
         INITIAL_BALANCE,
-        data
+        { ...data, initialDepositDate: sixMonthsAgo.toISOString() }
       );
       navigate('/dashboard');
     } catch (err) {

@@ -26,7 +26,7 @@ export const api = {
       email,
       password,
       name,
-      ...extraData,   // fullName, dateOfBirth, phoneNumber, address, employment, etc.
+      ...extraData,
       accounts: [
         { 
           id: Date.now() + 1, 
@@ -54,7 +54,19 @@ export const api = {
       transactions: []
     };
     
-    // Add initial deposit transaction if initialBalance > 0
+    // Helper to generate random past dates
+    const randomPastDate = (monthsAgoMax) => {
+      const date = new Date();
+      const monthsBack = Math.random() * monthsAgoMax;
+      date.setMonth(date.getMonth() - monthsBack);
+      // Random day within month
+      date.setDate(Math.floor(Math.random() * 28) + 1);
+      return date.toISOString();
+    };
+    
+    // 1. Initial deposit (6 months ago, fixed)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     if (initialBalance > 0) {
       newUser.transactions.push({
         id: Date.now(),
@@ -63,9 +75,72 @@ export const api = {
         amount: initialBalance,
         description: 'Initial deposit',
         category: 'Income',
-        date: new Date().toISOString()
+        date: sixMonthsAgo.toISOString()
       });
     }
+    
+    // 2. Generate many realistic past transactions (spending & small deposits)
+    const spendingCategories = [
+      { cat: 'Groceries', desc: ['Whole Foods', 'Trader Joe\'s', 'Kroger', 'Safeway', 'Aldi'] },
+      { cat: 'Dining', desc: ['Starbucks', 'Chipotle', 'McDonald\'s', 'Panera Bread', 'Local Pizzeria'] },
+      { cat: 'Shopping', desc: ['Amazon', 'Walmart', 'Target', 'Best Buy', 'Home Depot'] },
+      { cat: 'Entertainment', desc: ['Netflix', 'Spotify', 'Disney+', 'Hulu', 'Cinema'] },
+      { cat: 'Bills', desc: ['Electric Bill', 'Water Bill', 'Internet', 'Phone Bill', 'Rent'] },
+      { cat: 'Transport', desc: ['Uber', 'Lyft', 'Gas Station', 'Public Transit', 'Parking'] },
+      { cat: 'Health', desc: ['Pharmacy', 'Doctor Visit', 'Gym Membership', 'Vitamins'] },
+      { cat: 'Transfer', desc: ['Transfer to savings', 'Transfer to credit card'] }
+    ];
+    
+    // Create 15 random transactions over the last 6 months
+    const numTx = 18;
+    for (let i = 0; i < numTx; i++) {
+      const categoryObj = spendingCategories[Math.floor(Math.random() * spendingCategories.length)];
+      const description = categoryObj.desc[Math.floor(Math.random() * categoryObj.desc.length)];
+      let amount;
+      let type;
+      let category = categoryObj.cat;
+      
+      if (category === 'Transfer') {
+        // Transfer to savings (outgoing)
+        amount = -(Math.floor(Math.random() * 500) + 50);
+        type = 'transfer_out';
+      } else if (category === 'Income') {
+        amount = Math.floor(Math.random() * 3000) + 500;
+        type = 'deposit';
+      } else {
+        // Regular spending
+        amount = -(Math.floor(Math.random() * 200) + 5);
+        type = 'withdrawal';
+      }
+      
+      // Ensure total spending doesn't exceed initial balance too much (just for realism)
+      // but we don't enforce hard limit.
+      newUser.transactions.push({
+        id: Date.now() + i + 1000,
+        accountId: newUser.accounts[0].id,
+        type: type,
+        amount: amount,
+        description: description,
+        category: category,
+        date: randomPastDate(5.5) // within last 5.5 months (before initial deposit)
+      });
+    }
+    
+    // Add a couple of small deposits (paychecks)
+    for (let i = 0; i < 3; i++) {
+      newUser.transactions.push({
+        id: Date.now() + i + 2000,
+        accountId: newUser.accounts[0].id,
+        type: 'deposit',
+        amount: Math.floor(Math.random() * 2500) + 1500,
+        description: 'Direct deposit - Payroll',
+        category: 'Income',
+        date: randomPastDate(5)
+      });
+    }
+    
+    // Sort transactions by date (oldest first for later sorting in dashboard)
+    newUser.transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
     
     users.push(newUser);
     saveUsers(users);

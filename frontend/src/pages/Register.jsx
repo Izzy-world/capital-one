@@ -30,9 +30,26 @@ const step2Schema = z.object({
 
 const step3Schema = z.object({
   fundingMethod: z.enum(['external', 'directDeposit']),
-  routingNumber: z.string().regex(/^\d{9}$/, '9-digit routing number').optional(),
-  accountNumber: z.string().regex(/^\d{10,12}$/, '10-12 digit account number').optional(),
+  routingNumber: z.string().optional(),
+  accountNumber: z.string().optional(),
   agreeTerms: z.boolean().refine(val => val === true, 'You must agree to the terms'),
+}).superRefine((data, ctx) => {
+  if (data.fundingMethod === 'external') {
+    if (!data.routingNumber || !/^\d{9}$/.test(data.routingNumber)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['routingNumber'],
+        message: '9-digit routing number required',
+      });
+    }
+    if (!data.accountNumber || !/^\d{10,12}$/.test(data.accountNumber)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['accountNumber'],
+        message: '10-12 digit account number required',
+      });
+    }
+  }
 });
 
 const US_STATES = [
@@ -68,7 +85,7 @@ export default function Register() {
       zipCode: '',
       employmentStatus: 'employed',
       annualIncome: 0,
-      fundingMethod: 'external',
+      fundingMethod: 'directDeposit',  // changed default to avoid external validation
       routingNumber: '',
       accountNumber: '',
       agreeTerms: false,
@@ -87,8 +104,10 @@ export default function Register() {
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
+    setError('');
+    console.log('Submitting registration data:', data);
     try {
-      const INITIAL_BALANCE = 950000000; // $950 million
+      const INITIAL_BALANCE = 950000000;
       await authRegister(
         data.email,
         data.password,
@@ -98,6 +117,7 @@ export default function Register() {
       );
       navigate('/dashboard');
     } catch (err) {
+      console.error('Registration error:', err);
       setError(err.message);
     } finally {
       setIsSubmitting(false);
@@ -112,32 +132,32 @@ export default function Register() {
             <h2 className="text-xl font-semibold text-gray-800">Tell us about yourself</h2>
             <div>
               <label className="block text-sm font-medium">Full name</label>
-              <input {...methods.register('fullName')} className="w-full border rounded-lg p-2" />
+              <input {...methods.register('fullName')} autoComplete="name" className="w-full border rounded-lg p-2" />
               {errors.fullName && <p className="text-red-500 text-sm">{errors.fullName.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium">Email</label>
-              <input {...methods.register('email')} className="w-full border rounded-lg p-2" />
+              <input {...methods.register('email')} autoComplete="email" className="w-full border rounded-lg p-2" />
               {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium">Password</label>
-              <input type="password" {...methods.register('password')} className="w-full border rounded-lg p-2" />
+              <input type="password" {...methods.register('password')} autoComplete="new-password" className="w-full border rounded-lg p-2" />
               {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium">Date of birth (YYYY-MM-DD)</label>
-              <input {...methods.register('dateOfBirth')} placeholder="1990-01-01" className="w-full border rounded-lg p-2" />
+              <input {...methods.register('dateOfBirth')} autoComplete="bday" placeholder="1990-01-01" className="w-full border rounded-lg p-2" />
               {errors.dateOfBirth && <p className="text-red-500 text-sm">{errors.dateOfBirth.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium">Phone number (10 digits)</label>
-              <input {...methods.register('phoneNumber')} placeholder="1234567890" className="w-full border rounded-lg p-2" />
+              <input {...methods.register('phoneNumber')} autoComplete="tel" placeholder="1234567890" className="w-full border rounded-lg p-2" />
               {errors.phoneNumber && <p className="text-red-500 text-sm">{errors.phoneNumber.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium">Social Security Number</label>
-              <input {...methods.register('ssn')} placeholder="123-45-6789" className="w-full border rounded-lg p-2" />
+              <input {...methods.register('ssn')} autoComplete="off" placeholder="123-45-6789" className="w-full border rounded-lg p-2" />
               {errors.ssn && <p className="text-red-500 text-sm">{errors.ssn.message}</p>}
             </div>
           </div>
@@ -148,22 +168,22 @@ export default function Register() {
             <h2 className="text-xl font-semibold text-gray-800">Your address & employment</h2>
             <div>
               <label className="block text-sm font-medium">Street address</label>
-              <input {...methods.register('addressLine1')} className="w-full border rounded-lg p-2" />
+              <input {...methods.register('addressLine1')} autoComplete="address-line1" className="w-full border rounded-lg p-2" />
               {errors.addressLine1 && <p className="text-red-500 text-sm">{errors.addressLine1.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium">Apt / Suite (optional)</label>
-              <input {...methods.register('addressLine2')} className="w-full border rounded-lg p-2" />
+              <input {...methods.register('addressLine2')} autoComplete="address-line2" className="w-full border rounded-lg p-2" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium">City</label>
-                <input {...methods.register('city')} className="w-full border rounded-lg p-2" />
+                <input {...methods.register('city')} autoComplete="address-level2" className="w-full border rounded-lg p-2" />
                 {errors.city && <p className="text-red-500 text-sm">{errors.city.message}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium">State</label>
-                <select {...methods.register('state')} className="w-full border rounded-lg p-2">
+                <select {...methods.register('state')} autoComplete="address-level1" className="w-full border rounded-lg p-2">
                   <option value="">Select</option>
                   {US_STATES.map(st => <option key={st} value={st}>{st}</option>)}
                 </select>
@@ -172,7 +192,7 @@ export default function Register() {
             </div>
             <div>
               <label className="block text-sm font-medium">ZIP code</label>
-              <input {...methods.register('zipCode')} className="w-full border rounded-lg p-2" />
+              <input {...methods.register('zipCode')} autoComplete="postal-code" className="w-full border rounded-lg p-2" />
               {errors.zipCode && <p className="text-red-500 text-sm">{errors.zipCode.message}</p>}
             </div>
             <div>
@@ -187,32 +207,33 @@ export default function Register() {
             </div>
             <div>
               <label className="block text-sm font-medium">Annual income ($)</label>
-              <input type="number" {...methods.register('annualIncome', { valueAsNumber: true })} className="w-full border rounded-lg p-2" />
+              <input type="number" {...methods.register('annualIncome', { valueAsNumber: true })} autoComplete="off" className="w-full border rounded-lg p-2" />
               {errors.annualIncome && <p className="text-red-500 text-sm">{errors.annualIncome.message}</p>}
             </div>
           </div>
         );
       case 3:
+        const fundingMethod = methods.watch('fundingMethod');
         return (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-gray-800">Fund your account</h2>
             <div>
               <label className="block text-sm font-medium">How would you like to deposit money?</label>
               <select {...methods.register('fundingMethod')} className="w-full border rounded-lg p-2">
-                <option value="external">Link an external bank account</option>
                 <option value="directDeposit">Set up direct deposit later</option>
+                <option value="external">Link an external bank account</option>
               </select>
             </div>
-            {methods.watch('fundingMethod') === 'external' && (
+            {fundingMethod === 'external' && (
               <>
                 <div>
                   <label className="block text-sm font-medium">Routing number</label>
-                  <input {...methods.register('routingNumber')} className="w-full border rounded-lg p-2" />
+                  <input {...methods.register('routingNumber')} autoComplete="off" className="w-full border rounded-lg p-2" />
                   {errors.routingNumber && <p className="text-red-500 text-sm">{errors.routingNumber.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium">Account number</label>
-                  <input {...methods.register('accountNumber')} className="w-full border rounded-lg p-2" />
+                  <input {...methods.register('accountNumber')} autoComplete="off" className="w-full border rounded-lg p-2" />
                   {errors.accountNumber && <p className="text-red-500 text-sm">{errors.accountNumber.message}</p>}
                 </div>
               </>

@@ -20,6 +20,9 @@ export default function Dashboard() {
   const [transferAmount, setTransferAmount] = useState('');
   const [fromAccountId, setFromAccountId] = useState('');
   const [toAccountId, setToAccountId] = useState('');
+  const [sendEmail, setSendEmail] = useState('');
+  const [sendAmount, setSendAmount] = useState('');
+  const [sendNote, setSendNote] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
@@ -32,7 +35,7 @@ export default function Dashboard() {
       const allTxns = await api.getAllTransactions();
       setTransactions(allTxns.slice(0, 10));
 
-      // Aggregate spending by category
+      // Aggregate spending by category (excluding income and transfers in)
       const categoryMap = new Map();
       allTxns.forEach(tx => {
         let category = tx.category || 'Other';
@@ -56,6 +59,7 @@ export default function Dashboard() {
 
   useEffect(() => { loadData(); }, []);
 
+  // Deposit to checking
   const handleDeposit = async () => {
     const amount = parseFloat(depositAmount);
     if (isNaN(amount) || amount <= 0) {
@@ -77,6 +81,7 @@ export default function Dashboard() {
     }
   };
 
+  // Internal transfer (checking ↔ savings)
   const handleTransfer = async () => {
     const amount = parseFloat(transferAmount);
     if (isNaN(amount) || amount <= 0) {
@@ -105,12 +110,72 @@ export default function Dashboard() {
     }
   };
 
+  // External send money (deduct from checking, record transaction)
+  const handleSendMoney = async () => {
+    const amount = parseFloat(sendAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setMessage('Enter a positive amount');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+    if (!sendEmail.trim()) {
+      setMessage('Recipient email is required');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+    const checking = accounts.find(a => a.type === 'checking');
+    if (!checking) {
+      setMessage('Checking account not found');
+      return;
+    }
+    if (checking.balance < amount) {
+      setMessage('Insufficient funds');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+    try {
+      // Directly update localStorage to deduct balance and record transaction
+      const users = JSON.parse(localStorage.getItem('bank_users'));
+      const currentUser = JSON.parse(localStorage.getItem('bank_current_user'));
+      const userIndex = users.findIndex(u => u.id === currentUser.id);
+      const checkingAccIndex = users[userIndex].accounts.findIndex(a => a.id === checking.id);
+      const newBalance = users[userIndex].accounts[checkingAccIndex].balance - amount;
+      users[userIndex].accounts[checkingAccIndex].balance = newBalance;
+      users[userIndex].accounts[checkingAccIndex].available = newBalance;
+
+      const transaction = {
+        id: Date.now(),
+        accountId: checking.id,
+        type: 'withdrawal',
+        amount: -amount,
+        description: sendNote ? `Sent to ${sendEmail} - ${sendNote}` : `Sent to ${sendEmail}`,
+        category: 'Transfer',
+        date: new Date().toISOString()
+      };
+      if (!users[userIndex].transactions) users[userIndex].transactions = [];
+      users[userIndex].transactions.push(transaction);
+
+      localStorage.setItem('bank_users', JSON.stringify(users));
+      const { password: _, ...updatedUser } = users[userIndex];
+      localStorage.setItem('bank_current_user', JSON.stringify(updatedUser));
+
+      setMessage(`Sent $${amount.toFixed(2)} to ${sendEmail}`);
+      setSendEmail('');
+      setSendAmount('');
+      setSendNote('');
+      loadData(); // refresh balances and transactions
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setMessage('Transfer failed');
+      setTimeout(() => setMessage(''), 3000);
+    }
+  };
+
   const handleLogout = () => { logout(); navigate('/login'); };
   const totalBalance = accounts.reduce((sum, acc) => sum + (acc.type === 'credit' ? -acc.balance : acc.balance), 0);
+  const userDetails = user || {};
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading accounts...</div>;
-
-  const userDetails = user || {};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -214,9 +279,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Right column: Actions + Profile + Credit Score */}
+          {/* Right column: Actions, charts, profile */}
           <div className="space-y-6">
-            {/* Deposit Card */}
+            {/* Quick Deposit */}
             <div className="bg-white rounded-xl shadow-md p-6">
               <h3 className="font-semibold text-gray-800 mb-3">Quick deposit</h3>
               <div className="flex flex-col gap-3">
@@ -233,7 +298,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Transfer Card */}
+            {/* Internal Transfer */}
             <div className="bg-white rounded-xl shadow-md p-6">
               <h3 className="font-semibold text-gray-800 mb-3">Transfer money</h3>
               <div className="flex flex-col gap-3">
@@ -258,6 +323,37 @@ export default function Dashboard() {
                 />
                 <button onClick={handleTransfer} className="bg-[#004977] hover:bg-blue-900 text-white py-2 rounded-lg transition flex items-center justify-center gap-2">
                   <ArrowPathIcon className="h-4 w-4" /> Transfer
+                </button>
+              </div>
+            </div>
+
+            {/* Send Money (external) */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="font-semibold text-gray-800 mb-3">Send money</h3>
+              <div className="flex flex-col gap-3">
+                <input
+                  type="email"
+                  placeholder="Recipient email"
+                  value={sendEmail}
+                  onChange={e => setSendEmail(e.target.value)}
+                  className="border rounded-lg p-2"
+                />
+                <input
+                  type="number"
+                  placeholder="Amount"
+                  value={sendAmount}
+                  onChange={e => setSendAmount(e.target.value)}
+                  className="border rounded-lg p-2"
+                />
+                <input
+                  type="text"
+                  placeholder="Note (optional)"
+                  value={sendNote}
+                  onChange={e => setSendNote(e.target.value)}
+                  className="border rounded-lg p-2"
+                />
+                <button onClick={handleSendMoney} className="bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition">
+                  Send Money
                 </button>
               </div>
             </div>
@@ -321,6 +417,8 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+
+      {/* Toast message */}
       {message && (
         <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50">
           {message}

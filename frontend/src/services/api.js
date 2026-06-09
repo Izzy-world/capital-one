@@ -78,7 +78,7 @@ export const api = {
       });
     }
     
-    // 2. Generate random past transactions
+    // 2. Generate random past transactions (amounts: $200-300 usually, occasionally $1500-2000)
     const spendingCategories = [
       { cat: 'Groceries', desc: ['Whole Foods', 'Trader Joe\'s', 'Kroger', 'Safeway', 'Aldi'] },
       { cat: 'Dining', desc: ['Starbucks', 'Chipotle', 'McDonald\'s', 'Panera Bread', 'Local Pizzeria'] },
@@ -96,10 +96,16 @@ export const api = {
       const description = categoryObj.desc[Math.floor(Math.random() * categoryObj.desc.length)];
       let amount, type, category = categoryObj.cat;
       if (category === 'Transfer') {
-        amount = -(Math.floor(Math.random() * 500) + 50);
+        amount = -(Math.floor(Math.random() * 500) + 50);  // transfers remain smaller
         type = 'transfer_out';
       } else {
-        amount = -(Math.floor(Math.random() * 200) + 5);
+        // 80% chance: $200-$300 withdrawal, 20% chance: $1500-$2000 withdrawal
+        const rand = Math.random();
+        if (rand < 0.8) {
+          amount = -(Math.floor(Math.random() * 101) + 200);   // -200 to -300
+        } else {
+          amount = -(Math.floor(Math.random() * 501) + 1500);  // -1500 to -2000
+        }
         type = 'withdrawal';
       }
       newUser.transactions.push({
@@ -110,7 +116,7 @@ export const api = {
       });
     }
     
-    // Paychecks
+    // Paychecks (small deposits)
     for (let i = 0; i < 3; i++) {
       newUser.transactions.push({
         id: Date.now() + i + 2000,
@@ -161,6 +167,17 @@ export const api = {
       date: randomPastDate(2)
     });
     // ===========================================
+    
+    // Optional: Add a specific $1,800 rent transaction (uncomment if desired)
+    // newUser.transactions.push({
+    //   id: Date.now() + 4000,
+    //   accountId: newUser.accounts[0].id,
+    //   type: 'withdrawal',
+    //   amount: -1800,
+    //   description: 'Rent payment',
+    //   category: 'Bills',
+    //   date: randomPastDate(4)
+    // });
     
     newUser.transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
     

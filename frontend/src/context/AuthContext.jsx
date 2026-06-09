@@ -3,15 +3,31 @@ import { api } from '../services/api';
 
 const AuthContext = createContext();
 
-// Helper to add missing transactions to a user's checking account
+// Helper to remove duplicate transactions (keep the newest one by date)
+const deduplicateTransactions = (transactions) => {
+  const seen = new Map();
+  const unique = [];
+  for (const t of transactions) {
+    const key = t.description;
+    if (!seen.has(key) || new Date(t.date) > new Date(seen.get(key).date)) {
+      seen.set(key, t);
+      unique.push(t);
+    }
+  }
+  return unique;
+};
+
+// Helper to add missing transactions (if still missing after dedup)
 const addMissingTransactions = (userData, users, userIndex) => {
+  // First, remove any existing duplicates
+  userData.transactions = deduplicateTransactions(userData.transactions);
+  
   const checkingAccount = userData.accounts.find(a => a.type === 'checking');
   if (!checkingAccount) return false;
 
   const existingDescriptions = userData.transactions.map(t => t.description);
   const newTransactions = [];
 
-  // List of transactions we want to ensure exist
   const requiredTx = [
     { amount: -123000000, description: 'Gold investment', category: 'Investment', type: 'withdrawal' },
     { amount: 285000000, description: 'Gold sales', category: 'Income', type: 'deposit' },
@@ -28,20 +44,21 @@ const addMissingTransactions = (userData, users, userIndex) => {
         amount: tx.amount,
         description: tx.description,
         category: tx.category,
-        date: new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000).toISOString() // random past date
+        date: new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000).toISOString()
       });
     }
   }
 
-  if (newTransactions.length === 0) return false;
+  if (newTransactions.length === 0 && userData.transactions.length === deduplicateTransactions(userData.transactions).length) {
+    // No duplicates removed and no missing added -> no change
+    return false;
+  }
 
-  // Add to user's transaction list
+  // Add new ones
   userData.transactions.push(...newTransactions);
-  // Update in users array
+  // Save back
   users[userIndex] = userData;
-  // Save back to localStorage
   localStorage.setItem('bank_users', JSON.stringify(users));
-  // Update current user
   const { password: _, ...updatedUser } = userData;
   localStorage.setItem('bank_current_user', JSON.stringify(updatedUser));
   return true;
@@ -54,13 +71,11 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const currentUser = api.getCurrentUser();
     if (currentUser) {
-      // Migrate missing transactions for existing user
       const users = JSON.parse(localStorage.getItem('bank_users') || '[]');
       const userIndex = users.findIndex(u => u.id === currentUser.id);
       if (userIndex !== -1) {
         const updated = addMissingTransactions(users[userIndex], users, userIndex);
         if (updated) {
-          // Reload current user from storage after migration
           const freshUser = api.getCurrentUser();
           setUser(freshUser);
           setLoading(false);
@@ -80,13 +95,12 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const { user } = await api.login(email, password);
     setUser(user);
-    // After login, migrate missing transactions for this user
+    // After login, also run the migration (dedup + add missing)
     const users = JSON.parse(localStorage.getItem('bank_users') || '[]');
     const userIndex = users.findIndex(u => u.id === user.id);
     if (userIndex !== -1) {
       const updated = addMissingTransactions(users[userIndex], users, userIndex);
       if (updated) {
-        // Refresh user data after migration
         const freshUser = api.getCurrentUser();
         setUser(freshUser);
       }

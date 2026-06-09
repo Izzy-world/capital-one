@@ -33,7 +33,7 @@ export default function Dashboard() {
       const accs = await api.getAccounts();
       setAccounts(accs);
       const allTxns = await api.getAllTransactions();
-      setTransactions(allTxns);  // show all
+      setTransactions(allTxns.slice(0, 28));
 
       // Aggregate spending by category (excluding income and transfers in)
       const categoryMap = new Map();
